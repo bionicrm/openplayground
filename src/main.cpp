@@ -62,7 +62,7 @@ int main()
 
     // vert shader
     GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
-    const char* vertShaderSrc = readFile("vertex.glsl");
+    const char* vertShaderSrc = readFile("src/vertex.glsl");
     glShaderSource(vertShader, 1, &vertShaderSrc, NULL);
     glCompileShader(vertShader);
 
@@ -73,7 +73,7 @@ int main()
 
     // frag shader
     GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
-    const char* fragShaderSrc = readFile("fragment.glsl");
+    const char* fragShaderSrc = readFile("src/fragment.glsl");
     glShaderSource(fragShader, 1, &fragShaderSrc, NULL);
     glCompileShader(fragShader);
 
@@ -105,40 +105,59 @@ int main()
     glEnableVertexAttribArray(texCoordAttrib);
 
     // tex
-    GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
+    GLuint tex[2];
+    glGenTextures(2, tex);
+
+    // tex 1
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex[0]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     int texWidth, texHeight;
-    unsigned char* img = SOIL_load_image("sample.png", &texWidth, &texHeight, 0, SOIL_LOAD_RGB);
+    unsigned char* img = SOIL_load_image("res/sample.png", &texWidth, &texHeight, 0, SOIL_LOAD_RGB);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texWidth, texHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, img);
     SOIL_free_image_data(img);
 
+    glUniform1i(glGetUniformLocation(shaderProgram, "tex_kitten"), 0);
     glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+
+    // tex 2
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, tex[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    img = SOIL_load_image("res/sample2.png", &texWidth, &texHeight, 0, SOIL_LOAD_RGB);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texWidth, texHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, img);
+    SOIL_free_image_data(img);
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "tex_puppy"), 1);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_LINEAR);
 
     // anisotropic filtering
     GLfloat maxAnisotropy;
     glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAnisotropy);
 
-    //GLuint uniColor = static_cast<GLuint>(glGetUniformLocation(shaderProgram, "triangle_color"));
-    //glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
+    // uniforms
+    GLuint uniTime = static_cast<GLuint>(glGetUniformLocation(shaderProgram, "time"));
 
-    //auto startTime = std::chrono::high_resolution_clock::now();
+    auto startTime = std::chrono::high_resolution_clock::now();
 
     while (!glfwWindowShouldClose(win)) {
         if (glfwGetKey(win, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(win, GL_TRUE);
         }
 
-        //auto now = std::chrono::high_resolution_clock::now();
-        //float time = std::chrono::duration_cast<std::chrono::duration<float>>(now - startTime).count();
+        auto now = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration_cast<std::chrono::duration<float>>(now - startTime).count();
 
-        //glUniform3f(uniColor, static_cast<GLfloat>((sin(time * 4.0f) + 1.0f) / 2.0f), 0.0f, 0.0f);
+        glUniform1f(uniTime, time);
 
         // draw!
         glClear(GL_COLOR_BUFFER_BIT);
@@ -147,6 +166,14 @@ int main()
         glfwSwapBuffers(win);
         glfwPollEvents();
     }
+
+    glDeleteTextures(2, tex);
+    glDeleteProgram(shaderProgram);
+    glDeleteShader(vertShader);
+    glDeleteShader(fragShader);
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
 
     glfwTerminate();
 
